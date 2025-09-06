@@ -109,7 +109,7 @@ def smooth_risk_function(week):
     """
     # 定义孕周范围和风险范围
     min_week, max_week = 11.0, 28.0
-    min_risk, max_risk = 1.0, 20.0
+    min_risk, max_risk = 1.0, 30.0
     
     if week <= min_week:
         return min_risk
@@ -1158,7 +1158,7 @@ def single_sensitivity_simulation(args):
         }
 
 def run_sensitivity_analysis(data, original_breakpoints, original_prob_model, n_simulations=50, 
-                            measurement_cv=0.15, threshold_zone_width=0.002, n_processes=None,
+                            measurement_cv=0.15, threshold_zone_width=0.01, n_processes=None,
                             show_progress=True):
     """
     改进的并行化检测误差敏感性分析
@@ -1440,7 +1440,7 @@ def main():
     
     # 7. 并行化敏感性分析
     sensitivity_results = run_sensitivity_analysis(data, optimal_breakpoints, prob_model_spline, 
-                                                  n_simulations=30, n_processes=4)  # 可以根据机器调整进程数
+                                                  n_simulations=30)  # 可以根据机器调整进程数
     if sensitivity_results:
         plot_sensitivity_results(sensitivity_results, optimal_breakpoints, grouping_results['推荐检测时点'].tolist())
 
@@ -1448,11 +1448,6 @@ def main():
     print("\n" + "="*80)
     print("=== 最终建议、理论分析与误差评估 ===")
     print("="*80)
-    
-    print(f"\n1. 理论改进点:")
-    print(f"   • 期望风险计算：E[Risk] = P(达标)×Risk(当前) + P(不达标)×Risk(延后)")
-    print(f"   • 平滑风险函数：使用二次函数模型替代阶梯函数，优化更稳定。")
-    print(f"   • 一致性优化：将分组和时点选择统一在最小化总体期望风险的目标下。")
     
     print(f"\n2. 最优分组策略 (一致性优化结果):")
     print(f"   分组数: {optimal_groups}")
@@ -1473,17 +1468,6 @@ def main():
         best_name = validation_results['best_model_name']
         best_r2 = validation_results['models'][best_name]['cv_r2'].mean()
         print(f"   最佳验证模型：{best_name}, R² {best_r2:.3f}")
-    
-    print(f"\n5. 检测误差影响分析 (敏感性分析):")
-    print(f"   • 分析方法: 对Y染色体浓度在[3.5%, 4.5%]区间的样本“是否达标”的标签进行随机扰动，模拟30次完整的建模和优化流程。")
-    print(f"   • 核心结论: BMI分组的分割点和各组的推荐检测时点在多次模拟中均表现出高度的稳定性。")
-    print(f"   • 分割点稳定性: 各分割点在模拟中的分布集中，标准差较小，表明分组结果对阈值附近的测量误差不敏感。")
-    print(f"   • 时点稳定性: 各组的推荐检测时点同样稳定，证明我们的策略是稳健的，不受轻微测量误差的影响。")
-    print(f"   • 最终结论: 本研究提出的BMI分组及NIPT时点推荐策略具有较强的鲁棒性。")
-
-    print(f"\n6. 实践指导:")
-    print(f"   • 建议在临床实践中采用本研究的分组策略以降低因检测失败带来的延期风险。")
-    print(f"   • 可根据具体医院条件，在本研究给出的推荐时点附近进行微调。")
     
     # 7. 创建最终结果可视化
     print(f"\n8. 生成最终结果可视化...")
