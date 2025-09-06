@@ -1257,6 +1257,39 @@ def run_sensitivity_analysis(data, original_breakpoints, original_prob_model, n_
     print(f"  标签变化范围: {label_changes_stats.min()} - {label_changes_stats.max()}")
     print(f"  并行化加速: 相比串行执行，预计节省时间约 {n_processes}x")
 
+    # 保存逐次模拟结果为CSV，便于复用
+    try:
+        max_bp = 0
+        max_week = 0
+        for res in results:
+            bps = res.get('breakpoints') or []
+            max_bp = max(max_bp, len(bps))
+            weeks = res.get('recommended_weeks') or []
+            max_week = max(max_week, len(weeks))
+        rows = []
+        for res in results:
+            row = {
+                'sim_id': res.get('sim_id'),
+                'success': res.get('success', False),
+                'label_changes': res.get('label_changes', 0),
+                'measurement_cv': measurement_cv,
+                'threshold_zone_width': threshold_zone_width
+            }
+            bps = res.get('breakpoints') or []
+            for i in range(max_bp):
+                row[f'bp_{i+1}'] = bps[i] if i < len(bps) else np.nan
+            weeks = res.get('recommended_weeks') or []
+            for i in range(max_week):
+                row[f'week_{i+1}'] = weeks[i] if i < len(weeks) else np.nan
+            rows.append(row)
+        if rows:
+            df_runs = pd.DataFrame(rows)
+            csv_path = 'sensitivity_simulation_runs.csv'
+            df_runs.to_csv(csv_path, index=False, encoding='utf-8-sig')
+            print(f"逐次模拟结果已保存: {csv_path}")
+    except Exception as e:
+        print(f"保存模拟结果CSV失败: {e}")
+
     return simulation_results
 
 def plot_sensitivity_results(sensitivity_results, original_breakpoints, original_weeks):
