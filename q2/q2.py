@@ -1158,7 +1158,8 @@ def single_sensitivity_simulation(args):
         }
 
 def run_sensitivity_analysis(data, original_breakpoints, original_prob_model, n_simulations=50, 
-                            measurement_cv=0.15, threshold_zone_width=0.002, n_processes=None):
+                            measurement_cv=0.15, threshold_zone_width=0.002, n_processes=None,
+                            show_progress=True):
     """
     改进的并行化检测误差敏感性分析
     
@@ -1212,9 +1213,19 @@ def run_sensitivity_analysis(data, original_breakpoints, original_prob_model, n_
     
     print(f"开始并行模拟...")
     
-    # 并行执行模拟
+    # 并行执行模拟（带进度输出）
+    results = []
+    completed = 0
+    successful_so_far = 0
+    progress_step = max(1, n_simulations // 10)
     with Pool(n_processes) as pool:
-        results = pool.map(single_sensitivity_simulation, simulation_args)
+        for res in pool.imap_unordered(single_sensitivity_simulation, simulation_args, chunksize=1):
+            results.append(res)
+            completed += 1
+            if res.get('success', False):
+                successful_so_far += 1
+            if show_progress and (completed % progress_step == 0 or completed == n_simulations):
+                print(f"进度: {completed}/{n_simulations} 已完成，成功 {successful_so_far} 个")
     
     # 整理结果
     simulation_results = {
