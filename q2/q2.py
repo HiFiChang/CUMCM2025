@@ -218,7 +218,7 @@ def create_probability_visualization(data, prob_model):
     plt.close()
     print("Expected risk heatmap saved: expected_risk_heatmap.png")
 
-def improved_spline_regression_modeling(data):
+def improved_spline_regression_modeling(data, visualize=True):
     """改进的样条回归建模"""
     
     print("\n=== 改进样条回归概率建模 ===")
@@ -433,11 +433,10 @@ def improved_spline_regression_modeling(data):
     auc = compute_auc(y_prob, y_pred_prob)
     print(f"改进样条回归模型AUC: {auc:.3f}")
     
-    # 绘制ROC曲线
-    auc_from_plot = plot_roc_curve(y_prob, y_pred_prob)
-    
-    # 创建可视化图表
-    create_probability_visualization(data, predict_probability_spline)
+    # 可选：绘制ROC曲线与概率可视化（避免在敏感性分析中重复生成图片）
+    if visualize:
+        auc_from_plot = plot_roc_curve(y_prob, y_pred_prob)
+        create_probability_visualization(data, predict_probability_spline)
     
     return predict_probability_spline, beta_spline, {'accuracy': accuracy, 'auc': auc}
 
@@ -1117,8 +1116,8 @@ def single_sensitivity_simulation(args):
         old_stdout = sys.stdout
         sys.stdout = StringIO()
         
-        # 重新训练概率模型
-        prob_model_perturbed, _, _ = improved_spline_regression_modeling(perturbed_data)
+        # 重新训练概率模型（关闭可视化以避免重复生成图片）
+        prob_model_perturbed, _, _ = improved_spline_regression_modeling(perturbed_data, visualize=False)
         
         # 重新优化分组（减少迭代次数以加速）
         _, breakpoints_perturbed, _ = consistent_bayesian_optimization(
