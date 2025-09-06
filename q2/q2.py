@@ -149,7 +149,7 @@ def create_probability_visualization(data, prob_model):
     print("\n=== Creating Probability Model Visualization ===")
     
     # 设置字体
-    plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans']
+    plt.rcParams['font.sans-serif'] = ['SimHei', 'Noto Sans CJK SC', 'WenQuanYi Zen Hei', 'Microsoft YaHei', 'Arial Unicode MS', 'DejaVu Sans', 'Arial']
     plt.rcParams['axes.unicode_minus'] = False
     
     # --- 图1: 概率模型表现 (等高线图) ---
@@ -170,17 +170,17 @@ def create_probability_visualization(data, prob_model):
     
     # 添加颜色条
     cbar1 = plt.colorbar(contour, ax=ax1)
-    cbar1.set_label('Qualification Probability')
+    cbar1.set_label('达标概率')
     
     # 叠加原始数据点
     qualified = data[data['Y浓度达标'] == 1]
     unqualified = data[data['Y浓度达标'] == 0]
-    ax1.scatter(qualified['BMI'], qualified['检测孕周_数值'], s=15, facecolors='none', edgecolors='cyan', alpha=0.7, label='Qualified (Actual)')
-    ax1.scatter(unqualified['BMI'], unqualified['检测孕周_数值'], s=15, c='red', marker='x', alpha=0.6, label='Unqualified (Actual)')
+    ax1.scatter(qualified['BMI'], qualified['检测孕周_数值'], s=15, facecolors='none', edgecolors='cyan', alpha=0.7, label='达标（实际）')
+    ax1.scatter(unqualified['BMI'], unqualified['检测孕周_数值'], s=15, c='red', marker='x', alpha=0.6, label='未达标（实际）')
     
     ax1.set_xlabel('BMI')
-    ax1.set_ylabel('Gestational Week')
-    ax1.set_title('Qualification Probability Surface', fontsize=16, fontweight='bold')
+    ax1.set_ylabel('孕周')
+    ax1.set_title('达标概率等高图', fontsize=16, fontweight='bold')
     ax1.legend()
     ax1.grid(True, alpha=0.2)
     
@@ -206,12 +206,12 @@ def create_probability_visualization(data, prob_model):
     
     im = ax2.contourf(RISK_BMI_mesh, RISK_WEEK_mesh, expected_risks, levels=20, cmap='RdYlBu_r')
     ax2.set_xlabel('BMI')
-    ax2.set_ylabel('Gestational Week')
-    ax2.set_title('Expected Risk Heatmap', fontsize=16, fontweight='bold')
+    ax2.set_ylabel('孕周')
+    ax2.set_title('期望风险热力图', fontsize=16, fontweight='bold')
     
     # 添加颜色条
     cbar2 = plt.colorbar(im, ax=ax2)
-    cbar2.set_label('Expected Risk Score')
+    cbar2.set_label('期望风险评分')
     
     plt.tight_layout()
     plt.savefig('expected_risk_heatmap.png', dpi=300, bbox_inches='tight')
@@ -414,20 +414,20 @@ def improved_spline_regression_modeling(data):
         
         # 绘制ROC曲线
         plt.figure(figsize=(8, 6))
-        plt.plot(fpr, tpr, linewidth=2, label=f'ROC Curve (AUC = {auc:.3f})')
-        plt.plot([0, 1], [0, 1], 'k--', linewidth=1, label='Random Classifier')
+        plt.plot(fpr, tpr, linewidth=2, label=f'ROC 曲线 (AUC = {auc:.3f})')
+        plt.plot([0, 1], [0, 1], 'k--', linewidth=1, label='随机分类器')
         plt.xlim([0.0, 1.0])
         plt.ylim([0.0, 1.05])
-        plt.xlabel('False Positive Rate (1 - Specificity)')
-        plt.ylabel('True Positive Rate (Sensitivity)')
-        plt.title('ROC Curve for NIPT Qualification Prediction')
+        plt.xlabel('假阳性率 (1 - 特异度)')
+        plt.ylabel('真阳性率 (敏感度)')
+        plt.title('NIPT 达标预测的 ROC 曲线')
         plt.legend(loc="lower right")
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
         plt.savefig('roc_curve_analysis.png', dpi=300, bbox_inches='tight')
         plt.close()
         
-        print(f"ROC curve saved: roc_curve_analysis.png (AUC = {auc:.3f})")
+        print(f"ROC 曲线已保存: roc_curve_analysis.png (AUC = {auc:.3f})")
         return auc
     
     auc = compute_auc(y_prob, y_pred_prob)
@@ -1172,7 +1172,7 @@ def run_sensitivity_analysis(data, original_breakpoints, original_prob_model, n_
     
     # 自动检测CPU核心数
     if n_processes is None:
-        n_processes = min(cpu_count(), 8)  # 最多使用8个进程，避免过度占用资源
+        n_processes = min(cpu_count(), 64)
     
     print("分析方法：基于测量误差的统计分布进行并行化蒙特卡洛模拟")
     print(f"测量变异系数: {measurement_cv*100:.1f}%")
@@ -1453,7 +1453,7 @@ def create_final_results_visualization(data, grouping_results, prob_model, break
     print("\n=== 创建最终结果可视化 ===")
     
     # 设置字体
-    plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans']
+    plt.rcParams['font.sans-serif'] = ['SimHei', 'Noto Sans CJK SC', 'WenQuanYi Zen Hei', 'Microsoft YaHei', 'Arial Unicode MS', 'DejaVu Sans', 'Arial']
     plt.rcParams['axes.unicode_minus'] = False
     
     # 1. BMI分组分布图
@@ -1465,11 +1465,11 @@ def create_final_results_visualization(data, grouping_results, prob_model, break
     colors = ['red', 'green', 'blue', 'orange', 'purple']
     for i, bp in enumerate(breakpoints):
         ax1.axvline(x=bp, color=colors[i % len(colors)], linestyle='--', 
-                   linewidth=2, label=f'Breakpoint {i+1}: {bp:.1f}')
+                   linewidth=2, label=f'分割点 {i+1}: {bp:.1f}')
     
     ax1.set_xlabel('BMI')
-    ax1.set_ylabel('Sample Count')
-    ax1.set_title('BMI Distribution and Group Boundaries', fontsize=14, fontweight='bold')
+    ax1.set_ylabel('样本数量')
+    ax1.set_title('BMI 分布与分组边界', fontsize=14, fontweight='bold')
     if len(breakpoints) > 0:
         ax1.legend()
     ax1.grid(True, alpha=0.3)
@@ -1482,14 +1482,14 @@ def create_final_results_visualization(data, grouping_results, prob_model, break
     # 2. 各组推荐检测时点图
     print("生成各组推荐检测时点图...")
     fig2, ax2 = plt.subplots(figsize=(10, 6))
-    group_names = [f'Group {i+1}' for i in range(len(grouping_results))]
+    group_names = [f'分组 {i+1}' for i in range(len(grouping_results))]
     recommended_weeks = grouping_results['推荐检测时点'].values
     group_colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8']
     
     bars = ax2.bar(group_names, recommended_weeks, 
                    color=group_colors[:len(group_names)], alpha=0.8)
-    ax2.set_ylabel('Recommended Testing Week')
-    ax2.set_title('Recommended Testing Week for Each BMI Group', fontsize=14, fontweight='bold')
+    ax2.set_ylabel('推荐检测孕周')
+    ax2.set_title('各 BMI 分组的推荐检测孕周', fontsize=14, fontweight='bold')
     
     # 在柱状图上添加数值标签
     for bar, week in zip(bars, recommended_weeks):
@@ -1510,8 +1510,8 @@ def create_final_results_visualization(data, grouping_results, prob_model, break
     risk_scores = grouping_results['期望风险评分'].values
     bars = ax3.bar(group_names, risk_scores,
                    color=group_colors[:len(group_names)], alpha=0.8)
-    ax3.set_ylabel('Expected Risk Score')
-    ax3.set_title('Expected Risk Comparison for Each BMI Group', fontsize=14, fontweight='bold')
+    ax3.set_ylabel('期望风险评分')
+    ax3.set_title('各 BMI 分组的期望风险对比', fontsize=14, fontweight='bold')
     
     for bar, risk in zip(bars, risk_scores):
         height = bar.get_height()
@@ -1559,12 +1559,12 @@ def create_final_results_visualization(data, grouping_results, prob_model, break
                    marker='*', edgecolor='black', linewidth=2)
     
     ax4.set_xlabel('BMI')
-    ax4.set_ylabel('Gestational Week')
-    ax4.set_title('BMI-Week Expected Risk Heatmap & Optimal Strategy', fontsize=14, fontweight='bold')
+    ax4.set_ylabel('孕周')
+    ax4.set_title('BMI-孕周 期望风险热力图与最优策略', fontsize=14, fontweight='bold')
     
     # 添加颜色条
     cbar = plt.colorbar(im, ax=ax4)
-    cbar.set_label('Expected Risk Score')
+    cbar.set_label('期望风险评分')
     
     plt.tight_layout()
     plt.savefig('bmi_week_risk_heatmap.png', dpi=300, bbox_inches='tight')
