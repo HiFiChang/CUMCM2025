@@ -1159,7 +1159,7 @@ def single_sensitivity_simulation(args):
         }
 
 def run_sensitivity_analysis(data, original_breakpoints, original_prob_model, n_simulations=50, 
-                            measurement_cv=0.15, threshold_zone_width=0.01, n_processes=None):
+                            measurement_cv=0.15, threshold_zone_width=0.002, n_processes=None):
     """
     改进的并行化检测误差敏感性分析
     
