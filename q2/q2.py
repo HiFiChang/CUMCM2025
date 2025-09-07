@@ -152,11 +152,22 @@ def create_probability_visualization(data, prob_model):
     plt.rcParams['font.sans-serif'] = ['SimHei', 'Noto Sans CJK SC', 'WenQuanYi Zen Hei', 'Microsoft YaHei', 'Arial Unicode MS', 'DejaVu Sans', 'Arial']
     plt.rcParams['axes.unicode_minus'] = False
     
-    # --- 图1: 概率模型表现 (等高线图) ---
-    fig1, ax1 = plt.subplots(1, 1, figsize=(10, 8))
+    # --- 图1: 优化的概率模型表现 (等高线图) ---
+    fig1, ax1 = plt.subplots(1, 1, figsize=(12, 8))
     
-    bmi_grid = np.linspace(data['BMI'].min(), data['BMI'].max(), 50)
-    week_grid = np.linspace(11, 25, 50)
+    # 设置孕周范围：从11周开始，截断11周以下的数据
+    week_min = 11.0
+    week_max = min(26.0, data['检测孕周_数值'].max() + 0.5)
+    
+    # 过滤数据，只保留11周及以上的数据点
+    data_filtered = data[data['检测孕周_数值'] >= week_min].copy()
+    
+    # 扩展BMI范围，让背景更宽
+    bmi_min_extended = data['BMI'].min() - 2.0  # 左侧扩展2个BMI单位
+    bmi_max_extended = data['BMI'].max() + 2.0  # 右侧扩展2个BMI单位
+    
+    bmi_grid = np.linspace(bmi_min_extended, bmi_max_extended, 60)
+    week_grid = np.linspace(week_min, week_max, 60)
     BMI_mesh, WEEK_mesh = np.meshgrid(bmi_grid, week_grid)
     
     # 计算概率表面
@@ -165,24 +176,59 @@ def create_probability_visualization(data, prob_model):
         for j in range(BMI_mesh.shape[1]):
             probs_surface[i, j] = prob_model(BMI_mesh[i, j], WEEK_mesh[i, j])
 
-    # 绘制填充等高线
-    contour = ax1.contourf(BMI_mesh, WEEK_mesh, probs_surface, levels=20, cmap='viridis', alpha=0.9)
+    # 使用更美观的配色方案绘制填充等高线
+    levels = np.linspace(0, 1, 21)  # 21个等级，更细致
+    contour = ax1.contourf(BMI_mesh, WEEK_mesh, probs_surface, levels=levels, 
+                          cmap='RdYlBu_r', alpha=0.85, extend='both')
+    
+    # 添加等高线
+    contour_lines = ax1.contour(BMI_mesh, WEEK_mesh, probs_surface, levels=[0.2, 0.4, 0.6, 0.8, 0.95], 
+                               colors='white', linewidths=1.0, alpha=0.8)
+    ax1.clabel(contour_lines, inline=True, fontsize=9, fmt='%.1f')
     
     # 添加颜色条
-    cbar1 = plt.colorbar(contour, ax=ax1)
-    cbar1.set_label('达标概率')
+    cbar1 = plt.colorbar(contour, ax=ax1, shrink=0.8)
+    cbar1.set_label('达标概率', fontsize=12)
+    cbar1.ax.tick_params(labelsize=10)
     
-    # 叠加原始数据点
-    qualified = data[data['Y浓度达标'] == 1]
-    unqualified = data[data['Y浓度达标'] == 0]
-    ax1.scatter(qualified['BMI'], qualified['检测孕周_数值'], s=15, facecolors='none', edgecolors='cyan', alpha=0.7, label='达标（实际）')
-    ax1.scatter(unqualified['BMI'], unqualified['检测孕周_数值'], s=15, c='red', marker='x', alpha=0.6, label='未达标（实际）')
+    # 优化数据点的显示（使用过滤后的数据）
+    qualified = data_filtered[data_filtered['Y浓度达标'] == 1]
+    unqualified = data_filtered[data_filtered['Y浓度达标'] == 0]
     
-    ax1.set_xlabel('BMI')
-    ax1.set_ylabel('孕周')
-    ax1.set_title('达标概率等高图', fontsize=16, fontweight='bold')
-    ax1.legend()
-    ax1.grid(True, alpha=0.2)
+    # 使用精美的点样式和颜色，确保视觉效果佳
+    # 达标点：渐变效果的绿色圆点 - 更小尺寸
+    ax1.scatter(qualified['BMI'], qualified['检测孕周_数值'], 
+               s=25, facecolors='lightgreen', edgecolors='darkgreen', 
+               linewidths=1.0, alpha=0.85, label='达标（实际）', zorder=6)
+    
+    # 添加达标点的白色内核，创造层次感 - 更小尺寸
+    ax1.scatter(qualified['BMI'], qualified['检测孕周_数值'], 
+               s=8, facecolors='white', alpha=0.8, zorder=7)
+    
+    # 未达标点：优雅的橙色菱形 - 更小尺寸
+    ax1.scatter(unqualified['BMI'], unqualified['检测孕周_数值'], 
+               s=20, c='orange', marker='D', edgecolors='darkred',
+               linewidths=1.0, alpha=0.9, label='未达标（实际）', zorder=6)
+    
+    # 添加未达标点的白色内核 - 更小尺寸
+    ax1.scatter(unqualified['BMI'], unqualified['检测孕周_数值'], 
+               s=6, facecolors='white', marker='D', alpha=0.7, zorder=7)
+    
+    ax1.set_xlabel('BMI', fontsize=12)
+    ax1.set_ylabel('孕周', fontsize=12)
+    ax1.set_title('Y染色体浓度达标概率分布', fontsize=16, fontweight='bold', pad=20)
+    
+    # 优化图例
+    legend = ax1.legend(loc='upper right', frameon=True, framealpha=0.9, 
+                       fancybox=True, shadow=True, fontsize=10)
+    legend.get_frame().set_facecolor('white')
+    
+    # 添加网格
+    ax1.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
+    
+    # 设置坐标轴范围，严格限制孕周从11开始
+    ax1.set_xlim(data['BMI'].min() - 1, data['BMI'].max() + 1)
+    ax1.set_ylim(week_min, week_max)
     
     plt.tight_layout()
     plt.savefig('qualification_probability_surface.png', dpi=300, bbox_inches='tight')
@@ -1158,7 +1204,7 @@ def single_sensitivity_simulation(args):
         }
 
 def run_sensitivity_analysis(data, original_breakpoints, original_prob_model, n_simulations=50, 
-                            measurement_cv=0.15, threshold_zone_width=0.01, n_processes=None,
+                            measurement_cv=0.15, threshold_zone_width=0.005, n_processes=None,
                             show_progress=True):
     """
     改进的并行化检测误差敏感性分析
@@ -1319,71 +1365,32 @@ def plot_sensitivity_results(sensitivity_results, original_breakpoints, original
     all_breakpoints = np.array(all_breakpoints)
     all_weeks = np.array(all_weeks)
     
-    # 创建图形布局
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
-    
-    # 1. 分割点稳定性分析
-    colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8']
-    for i in range(min(all_breakpoints.shape[1], len(original_breakpoints))):
-        bp_values = all_breakpoints[:, i]
-        bp_std = np.std(bp_values)
-        ax1.hist(bp_values, bins=15, alpha=0.7, color=colors[i % len(colors)], 
-                label=f'分割点 {i+1} (σ={bp_std:.3f})')
-        ax1.axvline(original_breakpoints[i], color=colors[i % len(colors)], 
-                   linestyle='--', linewidth=2, alpha=0.8)
-
-    ax1.set_title('BMI 分割点稳定性分析', fontsize=14, fontweight='bold')
-    ax1.set_xlabel('BMI 值')
-    ax1.set_ylabel('模拟次数')
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
-
-    # 2. 推荐孕周稳定性分析
-    for i in range(min(all_weeks.shape[1], len(original_weeks))):
-        week_values = all_weeks[:, i]
-        week_std = np.std(week_values)
-        ax2.hist(week_values, bins=15, alpha=0.7, color=colors[i % len(colors)], 
-                label=f'分组 {i+1} (σ={week_std:.3f})')
-        ax2.axvline(original_weeks[i], color=colors[i % len(colors)], 
-                   linestyle='--', linewidth=2, alpha=0.8)
-
-    ax2.set_title('推荐检测孕周稳定性分析', fontsize=14, fontweight='bold')
-    ax2.set_xlabel('孕周')
-    ax2.set_ylabel('模拟次数')
-    ax2.legend()
-    ax2.grid(True, alpha=0.3)
-
-    # 3. 标签变化统计
-    label_changes = np.array(sensitivity_results['label_changes'])
-    ax3.hist(label_changes, bins=20, alpha=0.7, color='orange', edgecolor='black')
-    ax3.axvline(label_changes.mean(), color='red', linestyle='--', linewidth=2, 
-               label=f'平均值: {label_changes.mean():.1f}')
-    ax3.set_title('每次模拟中的标签变化数量', fontsize=14, fontweight='bold')
-    ax3.set_xlabel('标签变化数量')
-    ax3.set_ylabel('模拟次数')
-    ax3.legend()
-    ax3.grid(True, alpha=0.3)
-
-    # 4. 稳定性总结表
-    ax4.axis('off')
-    
     # 计算稳定性指标
     bp_stability = [np.std(all_breakpoints[:, i]) for i in range(all_breakpoints.shape[1])]
     week_stability = [np.std(all_weeks[:, i]) for i in range(all_weeks.shape[1])]
     
-    stability_text = "稳定性统计摘要\n" + "="*25 + "\n\n"
-    stability_text += f"有效模拟次数: {len(all_breakpoints)}\n"
-    stability_text += f"平均标签变化: {label_changes.mean():.1f} ± {label_changes.std():.1f}\n\n"
+    # 计算标签变化统计
+    label_changes = np.array(sensitivity_results['label_changes'])
     
-    stability_text += "分割点标准差:\n"
+    # 输出摘要到终端
+    print("\n" + "="*50)
+    print("敏感性分析稳定性统计摘要")
+    print("="*50)
+    print(f"有效模拟次数: {len(all_breakpoints)}")
+    print(f"平均标签变化: {label_changes.mean():.1f} ± {label_changes.std():.1f}")
+    print(f"标签变化范围: {label_changes.min()} - {label_changes.max()}")
+    
+    print("\nBMI分割点标准差:")
     for i, std in enumerate(bp_stability):
-        stability_text += f"  分割点 {i+1}: {std:.4f}\n"
+        stability_desc = "高度稳定" if std < 0.5 else "较为稳定" if std < 1.0 else "一般"
+        print(f"  分割点 {i+1}: {std:.4f} ({stability_desc})")
     
-    stability_text += "\n推荐时点标准差:\n"
+    print("\n推荐检测时点标准差:")
     for i, std in enumerate(week_stability):
-        stability_text += f"  分组 {i+1}: {std:.4f} 周\n"
+        stability_desc = "高度稳定" if std < 0.5 else "较为稳定" if std < 1.0 else "一般"
+        print(f"  分组 {i+1}: {std:.4f} 周 ({stability_desc})")
     
-    # 稳定性评估
+    # 总体稳定性评估
     max_bp_std = max(bp_stability) if bp_stability else 0
     max_week_std = max(week_stability) if week_stability else 0
     
@@ -1394,16 +1401,99 @@ def plot_sensitivity_results(sensitivity_results, original_breakpoints, original
     else:
         stability_level = "稳定性一般"
     
-    stability_text += f"\n总体稳定性评估: {stability_level}"
+    print(f"\n总体稳定性评估: {stability_level}")
+    print("="*50)
     
-    ax4.text(0.05, 0.95, stability_text, transform=ax4.transAxes, 
-            verticalalignment='top', fontsize=10, 
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray", alpha=0.8))
+    # 1. 分割点稳定性分析图
+    plt.figure(figsize=(10, 6))
+    colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8']
+    for i in range(min(all_breakpoints.shape[1], len(original_breakpoints))):
+        bp_values = all_breakpoints[:, i]
+        bp_std = np.std(bp_values)
+        plt.hist(bp_values, bins=15, alpha=0.7, color=colors[i % len(colors)], 
+                label=f'分割点 {i+1} (σ={bp_std:.3f})')
+        plt.axvline(original_breakpoints[i], color=colors[i % len(colors)], 
+                   linestyle='--', linewidth=2, alpha=0.8)
 
+    plt.title('BMI 分割点稳定性分析', fontsize=14, fontweight='bold')
+    plt.xlabel('BMI 值')
+    plt.ylabel('模拟次数')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.savefig('sensitivity_analysis_comprehensive.png', dpi=300, bbox_inches='tight')
+    plt.savefig('sensitivity_breakpoints_stability.png', dpi=300, bbox_inches='tight')
     plt.close()
-    print("综合敏感性分析图已保存: sensitivity_analysis_comprehensive.png")
+    print("BMI分割点稳定性图已保存: sensitivity_breakpoints_stability.png")
+
+    # 2. 推荐孕周稳定性分析图
+    plt.figure(figsize=(10, 6))
+    for i in range(min(all_weeks.shape[1], len(original_weeks))):
+        week_values = all_weeks[:, i]
+        week_std = np.std(week_values)
+        plt.hist(week_values, bins=15, alpha=0.7, color=colors[i % len(colors)], 
+                label=f'分组 {i+1} (σ={week_std:.3f})')
+        plt.axvline(original_weeks[i], color=colors[i % len(colors)], 
+                   linestyle='--', linewidth=2, alpha=0.8)
+
+    plt.title('推荐检测孕周稳定性分析', fontsize=14, fontweight='bold')
+    plt.xlabel('孕周')
+    plt.ylabel('模拟次数')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig('sensitivity_weeks_stability.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    print("推荐孕周稳定性图已保存: sensitivity_weeks_stability.png")
+
+    # 3. 标签变化统计图
+    plt.figure(figsize=(10, 6))
+    plt.hist(label_changes, bins=20, alpha=0.7, color='orange', edgecolor='black')
+    plt.axvline(label_changes.mean(), color='red', linestyle='--', linewidth=2, 
+               label=f'平均值: {label_changes.mean():.1f}')
+    plt.title('每次模拟中的标签变化数量', fontsize=14, fontweight='bold')
+    plt.xlabel('标签变化数量')
+    plt.ylabel('模拟次数')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig('sensitivity_label_changes.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    print("标签变化统计图已保存: sensitivity_label_changes.png")
+
+    # 4. 稳定性总结图
+    plt.figure(figsize=(12, 8))
+    
+    # 创建子图
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+    
+    # 分割点稳定性条形图
+    bp_names = [f'分割点 {i+1}' for i in range(len(bp_stability))]
+    bars1 = ax1.bar(bp_names, bp_stability, color=['#FF6B6B', '#4ECDC4', '#45B7D1'][:len(bp_stability)], alpha=0.7)
+    ax1.set_title('BMI分割点稳定性 (标准差)', fontsize=14, fontweight='bold')
+    ax1.set_ylabel('标准差')
+    ax1.grid(True, alpha=0.3)
+    
+    # 在条形图上添加数值标签
+    for bar, value in zip(bars1, bp_stability):
+        ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01,
+                f'{value:.3f}', ha='center', va='bottom')
+    
+    # 推荐时点稳定性条形图
+    week_names = [f'分组 {i+1}' for i in range(len(week_stability))]
+    bars2 = ax2.bar(week_names, week_stability, color=['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A'][:len(week_stability)], alpha=0.7)
+    ax2.set_title('推荐检测时点稳定性 (标准差)', fontsize=14, fontweight='bold')
+    ax2.set_ylabel('标准差 (周)')
+    ax2.grid(True, alpha=0.3)
+    
+    # 在条形图上添加数值标签
+    for bar, value in zip(bars2, week_stability):
+        ax2.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01,
+                f'{value:.3f}', ha='center', va='bottom')
+    
+    plt.tight_layout()
+    plt.savefig('sensitivity_stability_summary.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    print("稳定性总结图已保存: sensitivity_stability_summary.png")
 
 def main():
     """主函数：执行改进的概率建模和一致性优化分析"""
